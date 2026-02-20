@@ -316,8 +316,9 @@ function createStructure(offsetX, offsetY, options = {}) {
             // Offsets
             // xOffset (along slope): Centered around 0
             const xOffset = (row * (CONFIG.solar.length + CONFIG.solar.gapY)) - ((CONFIG.solar.rowsPerSlope * CONFIG.solar.length) / 2) + (CONFIG.solar.length / 2);
-            // zOffset (along building length): Centered around 0
-            const zOffset = (col * (CONFIG.solar.width + CONFIG.solar.gapX)) - ((CONFIG.solar.panelsPerRow * CONFIG.solar.width) / 2);
+            // zOffset (along building length): Centered around 0 (accounting for gaps)
+            const totalZSpan = (CONFIG.solar.panelsPerRow - 1) * (CONFIG.solar.width + CONFIG.solar.gapX);
+            const zOffset = (col * (CONFIG.solar.width + CONFIG.solar.gapX)) - (totalZSpan / 2);
 
             // Create vector on unrotated plane (assuming plane is flat at y=0)
             // But our "Plane" is rotated by pitchRad around Z axis.
@@ -358,8 +359,9 @@ function createStructure(offsetX, offsetY, options = {}) {
             const xOffset = (row * (CONFIG.solar.length + CONFIG.solar.gapY)) - ((CONFIG.solar.rowsPerSlope * CONFIG.solar.length) / 2) + (CONFIG.solar.length / 2);
             // Flip xOffset to mirror properly? 
             // If xOffset is positive, it moves "UP" the slope (towards apex) if we stick to the local X definition.
-            // Whatever, symmetric distribution is fine.
-            const zOffset = (col * (CONFIG.solar.width + CONFIG.solar.gapX)) - ((CONFIG.solar.panelsPerRow * CONFIG.solar.width) / 2);
+            // zOffset (along building length): Centered around 0 (accounting for gaps)
+            const totalZSpan = (CONFIG.solar.panelsPerRow - 1) * (CONFIG.solar.width + CONFIG.solar.gapX);
+            const zOffset = (col * (CONFIG.solar.width + CONFIG.solar.gapX)) - (totalZSpan / 2);
 
             // We use -xOffset approx to match left side logic if we want "row 0" to be same relative pos
             // Slight adjustment to cx to prevent ridge overlapping, offset slightly down the slope
@@ -913,6 +915,26 @@ function createEnvironment() {
     road.receiveShadow = true;
     group.add(road);
 
+    // 5. Access Roads (full-width across both carports, connecting to main road)
+    // Spans from car port outer edge (x=-12) to main road (x=22)
+    const accessRoadSpan = 34; // x from -12 to 22
+    const accessRoadWidth = 12; // 12m wide access road for turning circle
+    const accessRoadGeo = new THREE.PlaneGeometry(accessRoadSpan, accessRoadWidth);
+
+    // North access road (beyond north end of structure, z ~ -51)
+    const accessNorth = new THREE.Mesh(accessRoadGeo, roadMat);
+    accessNorth.rotation.x = -Math.PI / 2;
+    accessNorth.position.set(5, 0.04, -54); // Pushed further out for turning space
+    accessNorth.receiveShadow = true;
+    group.add(accessNorth);
+
+    // South access road (beyond south end of structure, z ~ +51)
+    const accessSouth = new THREE.Mesh(accessRoadGeo, roadMat);
+    accessSouth.rotation.x = -Math.PI / 2;
+    accessSouth.position.set(5, 0.04, 54); // Pushed further out for turning space
+    accessSouth.receiveShadow = true;
+    group.add(accessSouth);
+
     return group;
 }
 
@@ -953,14 +975,16 @@ for (let i = 0; i < 80; i++) {
     let z = (Math.random() * 160) - 80; // -80 to +80
 
     // Exclusion zones
-    // Tarmac area bounds: X runs -23.5 to 15.5, Z runs -52 to 62
-    const inStructureZone = (x > -25 && x < 17) && (z > -52 && z < 62);
+    // Tarmac area bounds: X runs -23.5 to 15.5, Z runs -55 to 65
+    const inStructureZone = (x > -25 && x < 17) && (z > -55 && z < 65);
     // Pitch exclusion
     const inPitchZone = (x > -100 && x < -10) && (z > -70 && z < 70);
-    // Road exclusion (road at x=20, width 6 -> 17 to 23)
+    // Road exclusion (main road at x=20, width 6 -> 17 to 23)
     const inRoadZone = (x > 16 && x < 24) && (z > -100 && z < 100);
+    // Access roads at north (z ~ -54) and south (z ~ +54) ends, spanning full width
+    const inAccessRoadZone = (x > -14 && x < 24) && ((z > -62 && z < -47) || (z > 47 && z < 62));
 
-    if (!inStructureZone && !inPitchZone && !inRoadZone) {
+    if (!inStructureZone && !inPitchZone && !inRoadZone && !inAccessRoadZone) {
         tree.position.set(x, 0, z);
 
         const scale = 0.8 + Math.random() * 0.4;
