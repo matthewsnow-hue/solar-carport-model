@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solar Structure Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+        }
+
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            pointer-events: none;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .key-metric {
+            font-weight: bold;
+            color: #2ecc71;
+        }
+
+        #controls-help {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #666;
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        #sun-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            font-size: 0.85rem;
+            color: #333;
+        }
+
+        #sun-controls label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+
+        #sun-controls input[type="range"] {
+            width: 180px;
+            margin-bottom: 10px;
+        }
+
+        #sun-controls span {
+            font-weight: normal;
+            color: #2ecc71;
+        }
+    </style>
+    <!-- Import Map for modern Three.js usage -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="info">
+        <h1>Solar Car/Coach Port Model</h1>
+        <p>Length: <span class="key-metric">96m</span> | Width: <span class="key-metric">24m (Two 12m Spans)</span></p>
+        <p>Height: <span class="key-metric">5.0m Eaves / 5.9m Ridge</span></p>
+        <p>Solar Panels: <span class="key-metric">996 Total</span></p>
+        <p>Layout: 2 Structures, 83 Panels/Row</p>
+        <p>Panel Model: Trina TSM-NEG9R.25</p>
+    </div>
+    <div id="controls-help">
+        Left Click: Rotate | Right Click: Pan | Scroll: Zoom
+    </div>
+    <div id="sun-controls">
+        <label>Sun Elevation: <span id="elev-val">38°</span></label>
+        <input type="range" id="sun-elevation" min="5" max="80" value="38" step="1">
+        <label>Sun Direction: <span id="azim-val">40°</span></label>
+        <input type="range" id="sun-azimuth" min="0" max="360" value="40" step="1">
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>
