@@ -186,7 +186,7 @@ function createCoachStructure(color) {
 }
 
 
-function createStructure(offsetX, offsetY) {
+function createStructure(offsetX, offsetY, options = {}) {
     const group = new THREE.Group();
 
     // Derived Dimensions
@@ -205,12 +205,14 @@ function createStructure(offsetX, offsetY) {
     for (let i = 0; i < colCount; i++) {
         const z = (i * CONFIG.structure.columnSpacing) - (CONFIG.structure.length / 2);
 
-        // Left Column
-        const colL = new THREE.Mesh(colGeo, colMat);
-        colL.position.set(-CONFIG.structure.width / 2, height / 2, z);
-        colL.castShadow = true;
-        colL.receiveShadow = true;
-        group.add(colL);
+        // Left Column (skip if options.skipLeftCols is true — supported by brace instead)
+        if (!options.skipLeftCols) {
+            const colL = new THREE.Mesh(colGeo, colMat);
+            colL.position.set(-CONFIG.structure.width / 2, height / 2, z);
+            colL.castShadow = true;
+            colL.receiveShadow = true;
+            group.add(colL);
+        }
 
         // Right Column
         const colR = new THREE.Mesh(colGeo, colMat);
@@ -395,22 +397,33 @@ const panelMeshGeoInst = new THREE.BoxGeometry(CONFIG.solar.length, 0.04, CONFIG
 // --- Build It ---
 
 // Building 1 (Cars) - Left side (-6m center, spans -12 to 0)
-// Building 2 (Coaches) - Right side (+6m center, spans 0 to 12)
-// This creates a shared column line at x=0, fulfilling "3 upright steels across".
+// Building 2 (Coaches) - Right side (+7.5m center, spans +1.5 to +13.5)
+// 1.5m open air gap between x=0 and x=+1.5
+// 3 ground columns: x=-12, x=0 (car port right), x=+13.5 (coach port right)
+// Coach port left columns skipped — supported by horizontal braces from car port
 
 const carPort = createStructure(-6.0, 0);
 scene.add(carPort);
 
-const coachPort = createStructure(6.0, 0);
+const coachPort = createStructure(7.5, 0, { skipLeftCols: true });
 scene.add(coachPort);
 
-// Central Gutter/Connector
-const gutterGeo = new THREE.BoxGeometry(0.5, 0.2, CONFIG.structure.length); // Visual gutter strip
-const gutterMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-const gutter = new THREE.Mesh(gutterGeo, gutterMat);
-// Position at Eaves height (5m)
-gutter.position.set(0, CONFIG.structure.eavesHeight, 0);
-scene.add(gutter);
+// Horizontal Braces (connecting car port right edge x=0 to coach port left edge x=+1.5)
+// Repeated at every column position (every 6m along the 96m length)
+const braceGroup = new THREE.Group();
+const braceMat = new THREE.MeshStandardMaterial({ color: CONFIG.structure.rafterColor, roughness: 0.7 });
+const braceGeo = new THREE.BoxGeometry(1.5, 0.2, 0.15); // 1.5m span, steel section
+const braceColCount = Math.ceil(CONFIG.structure.length / CONFIG.structure.columnSpacing) + 1;
+
+for (let i = 0; i < braceColCount; i++) {
+    const z = (i * CONFIG.structure.columnSpacing) - (CONFIG.structure.length / 2);
+    const brace = new THREE.Mesh(braceGeo, braceMat);
+    // Center of brace at x = 0.75 (midpoint of 0 to 1.5), at eaves height
+    brace.position.set(0.75, CONFIG.structure.eavesHeight, z);
+    brace.castShadow = true;
+    braceGroup.add(brace);
+}
+scene.add(braceGroup);
 
 // --- Container (Between Pitch and Car Port) ---
 function createContainer(customLength = null) {
@@ -455,9 +468,9 @@ function createContainer(customLength = null) {
 }
 
 const storageContainer = createContainer();
-// Position in the gap between the car port (-12m edge) and pitch (-32.5m edge)
-// User requested it match the red line rendering, filling the gap right up to the edge of the hardstanding
-storageContainer.position.set(-16.0, 0, 0);
+// Position shifted 1.5m further left to create a 1.5m gap from car port edge (-12m)
+// Container right edge: -17.5 + 4 = -13.5. Gap: -12 - (-13.5) = 1.5m
+storageContainer.position.set(-17.5, 0, 0);
 scene.add(storageContainer);
 
 // Second Storage Container (South edge)
@@ -467,7 +480,7 @@ const smallContainer = createContainer(smallContainerLength);
 // Bottom of main container is at z = 48 (length 96, centered at 0).
 // 1.5m separation -> starts at z = 49.5
 // Center = 49.5 + (7 / 2) = 53
-smallContainer.position.set(-16.0, 0, 53.0);
+smallContainer.position.set(-17.5, 0, 53.0);
 scene.add(smallContainer);
 
 
@@ -769,13 +782,13 @@ function createEnvironment() {
     });
 
     // Tarmac Rect 1: Under Car/Coach Ports
-    // Fits from X=-12 to X=14. Length -50 to +50
-    const portsWidth = 26; // X from -12 to 14
+    // Car port: -12 to 0. Coach port: +1.5 to +13.5. Plus margin. -> -12 to 15.5
+    const portsWidth = 27.5; // X from -12 to 15.5
     const portsLength = 100; // Z from -50 to 50
     const portsTarmacGeo = new THREE.PlaneGeometry(portsWidth, portsLength);
     const portsTarmac = new THREE.Mesh(portsTarmacGeo, hardStandingMat);
     portsTarmac.rotation.x = -Math.PI / 2;
-    portsTarmac.position.set(1, 0.05, 0); // X center 1
+    portsTarmac.position.set(1.75, 0.05, 0); // X center = (-12 + 15.5) / 2 = 1.75
     portsTarmac.receiveShadow = true;
     group.add(portsTarmac);
 
@@ -940,8 +953,8 @@ for (let i = 0; i < 80; i++) {
     let z = (Math.random() * 160) - 80; // -80 to +80
 
     // Exclusion zones
-    // Tarmac area bounds: X runs -22 to 14, Z runs -52 to 62
-    const inStructureZone = (x > -24 && x < 16) && (z > -52 && z < 62);
+    // Tarmac area bounds: X runs -23.5 to 15.5, Z runs -52 to 62
+    const inStructureZone = (x > -25 && x < 17) && (z > -52 && z < 62);
     // Pitch exclusion
     const inPitchZone = (x > -100 && x < -10) && (z > -70 && z < 70);
     // Road exclusion (road at x=20, width 6 -> 17 to 23)
